@@ -1,3 +1,5 @@
+using Scalar.AspNetCore; 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -6,9 +8,13 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI();
 
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.MapScalarApiReference(options =>
+{
+    options.WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json");
+});
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
