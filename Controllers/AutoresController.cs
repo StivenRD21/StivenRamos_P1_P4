@@ -1,108 +1,64 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite; 
-using Dapper;           
-using EditorialApi.Models;
+using EditorialApi.Models; 
+using EditorialApi.Services; 
 
-namespace EditorialApi.Controllers
+namespace EditorialApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AutoresController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AutoresController : ControllerBase
+    private readonly AutoresServices _autoresService;
+
+    public AutoresController(AutoresServices autoresService)
     {
-        private readonly string _connectionString;
+        _autoresService = autoresService;
+    }
 
-        public AutoresController(IConfiguration configuration)
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var autores = await _autoresService.GetAllAsync();
+        return Ok(autores);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var autor = await _autoresService.GetByIdAsync(id);
+        if (autor == null)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
-            InicializarBaseDeDatos();
+            return NotFound();
         }
+        return Ok(autor);
+    }
 
-        private void InicializarBaseDeDatos()
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] AutorRecord autor)
+    {
+        var newId = await _autoresService.InsertAsync(autor);
+        return CreatedAtAction(nameof(GetById), new { id = newId }, autor with { IdAutor = newId });
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] AutorRecord autor)
+    {
+        var updated = await _autoresService.UpdateAsync(id, autor);
+        if (!updated)
         {
-            using var connection = new SqliteConnection(_connectionString);
-            var sql = @"
-                CREATE TABLE IF NOT EXISTS Autores (
-                    IdAutor INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Nombres TEXT NOT NULL,
-                    Nacionalidad TEXT NOT NULL,
-                    FechaNacimiento TEXT NOT NULL,
-                    Sueldo REAL NOT NULL
-                )";
-            connection.Execute(sql);
+            return NotFound();
         }
+        return NoContent();
+    }
 
-        [HttpGet]
-        public IActionResult Get()
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var deleted = await _autoresService.DeleteAsync(id);
+        if (!deleted)
         {
-            using var connection = new SqliteConnection(_connectionString);
-            var autores = connection.Query<Autor>("SELECT * FROM Autores").ToList();
-            return Ok(autores);
+            return NotFound();
         }
-
-        [HttpGet("{id}")]
-        public IActionResult Get(int id)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            var autor = connection.QueryFirstOrDefault<Autor>(
-                "SELECT * FROM Autores WHERE IdAutor = @Id", new { Id = id });
-
-            if (autor == null)
-            {
-                return NotFound();
-            }
-            
-            return Ok(autor);
-        }
-
-        [HttpPost]
-        public IActionResult Post([FromBody] Autor autor)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            var sql = @"
-                INSERT INTO Autores (Nombres, Nacionalidad, FechaNacimiento, Sueldo) 
-                VALUES (@Nombres, @Nacionalidad, @FechaNacimiento, @Sueldo);
-                SELECT last_insert_rowid();";
-            
-            var idGenerado = connection.ExecuteScalar<int>(sql, autor);
-            autor.IdAutor = idGenerado;
-
-            return CreatedAtAction(nameof(Get), new { id = autor.IdAutor }, autor);
-        }
-
-        [HttpPut("{id}")]
-        public IActionResult Put(int id, [FromBody] Autor autor)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            var sql = @"
-                UPDATE Autores 
-                SET Nombres = @Nombres, Nacionalidad = @Nacionalidad, 
-                    FechaNacimiento = @FechaNacimiento, Sueldo = @Sueldo 
-                WHERE IdAutor = @Id";
-            
-            autor.IdAutor = id; 
-            var filasAfectadas = connection.Execute(sql, autor);
-
-            if (filasAfectadas == 0)
-            {
-                return NotFound();
-            }
-
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            var filasAfectadas = connection.Execute(
-                "DELETE FROM Autores WHERE IdAutor = @Id", new { Id = id });
-
-            if (filasAfectadas == 0)
-            {
-                return NotFound();
-            }
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

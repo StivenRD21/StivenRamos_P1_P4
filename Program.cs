@@ -1,10 +1,13 @@
 using Scalar.AspNetCore; 
+using EditorialApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddScoped<AutoresServices>();
 
 var app = builder.Build();
 
